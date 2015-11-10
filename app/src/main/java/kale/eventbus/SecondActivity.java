@@ -3,6 +3,8 @@ package kale.eventbus;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
 
 import kale.lib.eventbus.EventBus;
 import kale.lib.eventbus.Subscriber;
@@ -13,21 +15,25 @@ import kale.lib.eventbus.Subscriber;
  */
 public class SecondActivity extends Activity {
 
-    private static final String TAG = "activity-2";
+    private static final String TAG = "SecondActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
         EventBus.getInstance().register(this);
 
-        EventBus.post("click", "haha", 1.3f);
+        ((TextView) findViewById(R.id.desc_tv)).setText("第二个界面");
+        findViewById(R.id.start_btn).setVisibility(View.GONE);
 
-        EventBus.post("ddd", 123456);
+        EventBus.post("click", "str", 1.3f);
+        EventBus.post("go", 123456);
     }
 
-    @Subscriber(tag = "ddd")
-    private void ddd(int i) {
-        Log.d(TAG, "ddd: i = " + i);
+    @Subscriber(tag = "go")
+    private void event(int i) {
+        Log.d(TAG, "=====> tag = go: " + i);
     }
 
 

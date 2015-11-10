@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import kale.lib.eventbus.reflect.Reflect;
+
 
 /**
  * @author Jack Tony
@@ -27,9 +29,9 @@ public class EventBus {
     private static EventBus instance;
 
     private SparseArray<BroadcastReceiver> mSubscriberSArr;
-    
+
     private static LocalBroadcastManager mLocalBroadcastManager;
-    
+
     public static EventBus getInstance() {
         if (instance == null) {
             instance = new EventBus();
@@ -41,76 +43,9 @@ public class EventBus {
         mLocalBroadcastManager = LocalBroadcastManager.getInstance(context);
         return this;
     }
-    
+
     private EventBus() {
         mSubscriberSArr = new SparseArray<>();
-    }
-
-    public void register(final Object subscriber) {
-        if (subscriber == null) {
-            Log.e(TAG, "Subscriber is null");
-            return;
-        }
-        final Map<String, List<Method>> methodMap = new HashMap<>();
-        IntentFilter filter = initMethods(subscriber, methodMap);
-        BroadcastReceiver receiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                List<Method> methods = methodMap.get(intent.getAction());
-                if (methods != null) {
-                    ParamsHandler.callMethod(subscriber, methods, intent);
-                }
-            }
-        };
-        mSubscriberSArr.put(subscriber.hashCode(), receiver);
-        if (mLocalBroadcastManager != null) {
-            mLocalBroadcastManager.registerReceiver(receiver, filter);
-        } else {
-            throw new NullPointerException("需要先调用EventBus的init()方法");
-        }
-    }
-
-    public void unregister(Object subscriber) {
-        BroadcastReceiver receiver = mSubscriberSArr.get(subscriber.hashCode());
-        mSubscriberSArr.remove(subscriber.hashCode());
-        
-        mLocalBroadcastManager.unregisterReceiver(receiver);
-    }
-
-    private IntentFilter initMethods(Object subscriber, Map<String, List<Method>> methodMap) {
-        IntentFilter filter = new IntentFilter();
-        Class<?> clazz = subscriber.getClass();
-        // 查找类中符合要求的注册方法,直到Object类
-        while (clazz != null && !isSystemCls(clazz.getName())) {
-            final Method[] allMethods = clazz.getDeclaredMethods();
-
-            for (Method method : allMethods) {
-                Subscriber annotation = method.getAnnotation(Subscriber.class);
-                if (annotation != null) {
-                    String key = annotation.tag();
-                    // 获取方法的tag
-                    if (!TextUtils.isEmpty(key)) {
-                        filter.addAction(key);
-                        
-                        if (methodMap.containsKey(key)) {
-                            methodMap.get(key).add(method);
-                        } else {
-                            ArrayList<Method> methods = new ArrayList<>();
-                            methods.add(method);
-                            methodMap.put(key, methods);
-                        } 
-                    }
-                }
-            }
-            
-            // 获取父类,以继续查找父类中符合要求的方法
-            clazz = clazz.getSuperclass();
-        }
-        return filter;
-    }
-
-    private boolean isSystemCls(String name) {
-        return name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("android.");
     }
 
     public static void post(String tag) {
@@ -118,13 +53,95 @@ public class EventBus {
     }
 
     public static void post(String tag, Object... params) {
-        Intent intent = ParamsHandler.generateIntent(tag, params);
+        Intent intent = ParamsHandler.initIntentByParams(tag, params);
         if (mLocalBroadcastManager != null) {
             mLocalBroadcastManager.sendBroadcast(intent);
-        }else {
+        } else {
             throw new NullPointerException("需要先调用EventBus的init()方法");
         }
     }
+    
+    public void register(final Object subscriber) {
+        if (subscriber == null) {
+            Log.e(TAG, "Subscriber is null");
+            return;
+        }
+        // 一个类就一个methodMap
+        final Map<String, List<Method>> methodMap = new HashMap<>();
+        IntentFilter filter = initFilter(subscriber, methodMap);
+        // 如果当前类中没有注册监听，那么就不应该注册广播
+        if (methodMap.size() != 0) {
+            BroadcastReceiver receiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    List<Method> methods = methodMap.get(intent.getAction());
+                    if (methods != null) {
+                        MyMethod method = ParamsHandler.getParamsFromIntent(methods, intent);
+                        if (method != null) {
+                            Reflect.on(subscriber).call(method.name, method.params);
+                        }
+                    }
+                }
+            };
+            mSubscriberSArr.put(subscriber.hashCode(), receiver);
+            mLocalBroadcastManager.registerReceiver(receiver, filter);
+        }
+    }
+
+    public void unregister(Object subscriber) {
+        BroadcastReceiver receiver = mSubscriberSArr.get(subscriber.hashCode());
+        if (receiver != null) {
+            mSubscriberSArr.remove(subscriber.hashCode());
+            mLocalBroadcastManager.unregisterReceiver(receiver);
+        }
+    }
+
+    private IntentFilter initFilter(Object subscriber, Map<String, List<Method>> methodMap) {
+        IntentFilter filter = new IntentFilter();
+        Class<?> clazz = subscriber.getClass();
+        
+        // 查找类中符合要求的注册方法,直到Object类
+        while (clazz != null && !isSystemCls(clazz.getName())) {
+            final Method[] allMethods = clazz.getDeclaredMethods();
+            initMethodsMap(allMethods, filter, methodMap);
+            clazz = clazz.getSuperclass();
+        }
+        return filter;
+    }
+
+    private void initMethodsMap(Method[] allMethods, IntentFilter filter, Map<String, List<Method>> methodMap) {
+        for (Method method : allMethods) {
+            Subscriber annotation = method.getAnnotation(Subscriber.class);
+            if (annotation != null) {
+                String key = annotation.tag();
+                // 获取方法的tag
+                if (!TextUtils.isEmpty(key)) {
+                    filter.addAction(key);
+                    if (methodMap.containsKey(key)) {
+                        methodMap.get(key).add(method);
+                    } else {
+                        ArrayList<Method> methods = new ArrayList<>();
+                        methods.add(method);
+                        methodMap.put(key, methods);
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isSystemCls(String name) {
+        return name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("android.");
+    }
 
     static class NullParam {}
+
+    static class MyMethod {
+        public String name;
+        public Object[] params;
+
+        public MyMethod(String name, Object[] params) {
+            this.name = name;
+            this.params = params;
+        }
+    }
 }

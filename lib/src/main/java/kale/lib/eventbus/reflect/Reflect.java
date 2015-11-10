@@ -36,16 +36,10 @@
 package kale.lib.eventbus.reflect;
 
 import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * A wrapper for an {@link Object} or {@link Class} upon which reflective calls
@@ -66,6 +60,8 @@ import java.util.Map;
  * @author Lukas Eder
  * @author Irek Matysiewicz
  */
+@Deprecated()
+@SuppressWarnings("内部使用的类，请不要从外部调用！！！")
 public class Reflect {
 
     // ---------------------------------------------------------------------
@@ -103,16 +99,6 @@ public class Reflect {
         return on(forName(name, classLoader));
     }
 
-    /**
-     * Wrap a class.
-     * <p>
-     * Use this when you want to access static fields and methods on a
-     * {@link Class} object, or as a basis for constructing objects of that
-     * class using {@link #create(Object...)}
-     *
-     * @param clazz The class to be wrapped
-     * @return A wrapped class object, to be used for further reflection.
-     */
     public static Reflect on(Class<?> clazz) {
         return new Reflect(clazz);
     }
@@ -204,149 +190,6 @@ public class Reflect {
     @SuppressWarnings("unchecked")
     public <T> T get() {
         return (T) object;
-    }
-
-    /**
-     * Set a field value.
-     * <p>
-     * This is roughly equivalent to {@link Field#set(Object, Object)}. If the
-     * wrapped object is a {@link Class}, then this will set a value to a static
-     * member field. If the wrapped object is any other {@link Object}, then
-     * this will set a value to an instance member field.
-     *
-     * @param name The field name
-     * @param value The new field value
-     * @return The same wrapped object, to be used for further reflection.
-     * @throws ReflectException If any reflection exception occurred.
-     */
-    public Reflect set(String name, Object value) throws ReflectException {
-        try {
-            Field field = field0(name);
-            field.set(object, unwrap(value));
-            return this;
-        }
-        catch (Exception e) {
-            throw new ReflectException(e);
-        }
-    }
-
-    /**
-     * Get a field value.
-     * <p>
-     * This is roughly equivalent to {@link Field#get(Object)}. If the wrapped
-     * object is a {@link Class}, then this will get a value from a static
-     * member field. If the wrapped object is any other {@link Object}, then
-     * this will get a value from an instance member field.
-     * <p>
-     * If you want to "navigate" to a wrapped version of the field, use
-     * {@link #field(String)} instead.
-     *
-     * @param name The field name
-     * @return The field value
-     * @throws ReflectException If any reflection exception occurred.
-     * @see #field(String)
-     */
-    public <T> T get(String name) throws ReflectException {
-        return field(name).<T>get();
-    }
-
-    /**
-     * Get a wrapped field.
-     * <p>
-     * This is roughly equivalent to {@link Field#get(Object)}. If the wrapped
-     * object is a {@link Class}, then this will wrap a static member field. If
-     * the wrapped object is any other {@link Object}, then this wrap an
-     * instance member field.
-     *
-     * @param name The field name
-     * @return The wrapped field
-     * @throws ReflectException If any reflection exception occurred.
-     */
-    public Reflect field(String name) throws ReflectException {
-        try {
-            Field field = field0(name);
-            return on(field.get(object));
-        }
-        catch (Exception e) {
-            throw new ReflectException(e);
-        }
-    }
-
-    private Field field0(String name) throws ReflectException {
-        Class<?> type = type();
-
-        // Try getting a public field
-        try {
-            return type.getField(name);
-        }
-
-        // Try again, getting a non-public field
-        catch (NoSuchFieldException e) {
-            do {
-                try {
-                    return accessible(type.getDeclaredField(name));
-                }
-                catch (NoSuchFieldException ignore) {}
-
-                type = type.getSuperclass();
-            }
-            while (type != null);
-
-            throw new ReflectException(e);
-        }
-    }
-
-    /**
-     * Get a Map containing field names and wrapped values for the fields'
-     * values.
-     * <p>
-     * If the wrapped object is a {@link Class}, then this will return static
-     * fields. If the wrapped object is any other {@link Object}, then this will
-     * return instance fields.
-     * <p>
-     * These two calls are equivalent <code><pre>
-     * on(object).field("myField");
-     * on(object).fields().get("myField");
-     * </pre></code>
-     *
-     * @return A map containing field names and wrapped values.
-     */
-    public Map<String, Reflect> fields() {
-        Map<String, Reflect> result = new LinkedHashMap<String, Reflect>();
-        Class<?> type = type();
-
-        do {
-            for (Field field : type.getDeclaredFields()) {
-                if (!isClass ^ Modifier.isStatic(field.getModifiers())) {
-                    String name = field.getName();
-
-                    if (!result.containsKey(name))
-                        result.put(name, field(name));
-                }
-            }
-
-            type = type.getSuperclass();
-        }
-        while (type != null);
-
-        return result;
-    }
-
-    /**
-     * Call a method by its name.
-     * <p>
-     * This is a convenience method for calling
-     * <code>call(name, new Object[0])</code>
-     *
-     * @param name The method name
-     * @return The wrapped method result or the same wrapped object if the
-     *         method returns <code>void</code>, to be used for further
-     *         reflection.
-     * @throws ReflectException If any reflection exception occurred.
-     * @see #call(String, Object...)
-     */
-    public Reflect call(String name) throws ReflectException {
-        return call(name, new Object[0]);
     }
 
     /**
@@ -481,133 +324,6 @@ public class Reflect {
         return possiblyMatchingMethod.getName().equals(desiredMethodName) && match(possiblyMatchingMethod.getParameterTypes(), desiredParamTypes);
     }
 
-    /**
-     * Call a constructor.
-     * <p>
-     * This is a convenience method for calling
-     * <code>create(new Object[0])</code>
-     *
-     * @return The wrapped new object, to be used for further reflection.
-     * @throws ReflectException If any reflection exception occurred.
-     * @see #create(Object...)
-     */
-    public Reflect create() throws ReflectException {
-        return create(new Object[0]);
-    }
-
-    /**
-     * Call a constructor.
-     * <p>
-     * This is roughly equivalent to {@link Constructor#newInstance(Object...)}.
-     * If the wrapped object is a {@link Class}, then this will create a new
-     * object of that class. If the wrapped object is any other {@link Object},
-     * then this will create a new object of the same type.
-     * <p>
-     * Just like {@link Constructor#newInstance(Object...)}, this will try to
-     * wrap primitive types or unwrap primitive type wrappers if applicable. If
-     * several constructors are applicable, by that rule, the first one
-     * encountered is called. i.e. when calling <code><pre>
-     * on(C.class).create(1, 1);
-     * </pre></code> The first of the following constructors will be applied:
-     * <code><pre>
-     * public C(int param1, Integer param2);
-     * public C(Integer param1, int param2);
-     * public C(Number param1, Number param2);
-     * public C(Number param1, Object param2);
-     * public C(int param1, Object param2);
-     * </pre></code>
-     *
-     * @param args The constructor arguments
-     * @return The wrapped new object, to be used for further reflection.
-     * @throws ReflectException If any reflection exception occurred.
-     */
-    public Reflect create(Object... args) throws ReflectException {
-        Class<?>[] types = types(args);
-
-        // Try invoking the "canonical" constructor, i.e. the one with exact
-        // matching argument types
-        try {
-            Constructor<?> constructor = type().getDeclaredConstructor(types);
-            return on(constructor, args);
-        }
-
-        // If there is no exact match, try to find one that has a "similar"
-        // signature if primitive argument types are converted to their wrappers
-        catch (NoSuchMethodException e) {
-            for (Constructor<?> constructor : type().getDeclaredConstructors()) {
-                if (match(constructor.getParameterTypes(), types)) {
-                    return on(constructor, args);
-                }
-            }
-
-            throw new ReflectException(e);
-        }
-    }
-
-    /**
-     * Create a proxy for the wrapped object allowing to typesafely invoke
-     * methods on it using a custom interface
-     *
-     * @param proxyType The interface type that is implemented by the proxy
-     * @return A proxy for the wrapped object
-     */
-    @SuppressWarnings("unchecked")
-    public <P> P as(Class<P> proxyType) {
-        final boolean isMap = (object instanceof Map);
-        final InvocationHandler handler = new InvocationHandler() {
-            @SuppressWarnings("null")
-            @Override
-            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                String name = method.getName();
-
-                // Actual method name matches always come first
-                try {
-                    return on(object).call(name, args).get();
-                }
-
-                // [#14] Emulate POJO behaviour on wrapped map objects
-                catch (ReflectException e) {
-                    if (isMap) {
-                        Map<String, Object> map = (Map<String, Object>) object;
-                        int length = (args == null ? 0 : args.length);
-
-                        if (length == 0 && name.startsWith("get")) {
-                            return map.get(property(name.substring(3)));
-                        }
-                        else if (length == 0 && name.startsWith("is")) {
-                            return map.get(property(name.substring(2)));
-                        }
-                        else if (length == 1 && name.startsWith("set")) {
-                            map.put(property(name.substring(3)), args[0]);
-                            return null;
-                        }
-                    }
-
-                    throw e;
-                }
-            }
-        };
-
-        return (P) Proxy.newProxyInstance(proxyType.getClassLoader(), new Class[] { proxyType }, handler);
-    }
-
-    /**
-     * Get the POJO property name of an getter/setter
-     */
-    private static String property(String string) {
-        int length = string.length();
-
-        if (length == 0) {
-            return "";
-        }
-        else if (length == 1) {
-            return string.toLowerCase();
-        }
-        else {
-            return string.substring(0, 1).toLowerCase() + string.substring(1);
-        }
-    }
-
     // ---------------------------------------------------------------------
     // Object API
     // ---------------------------------------------------------------------
@@ -627,7 +343,6 @@ public class Reflect {
 
                 return false;
             }
-
             return true;
         }
         else {
@@ -648,11 +363,7 @@ public class Reflect {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Reflect) {
-            return object.equals(((Reflect) obj).get());
-        }
-
-        return false;
+        return obj instanceof Reflect && object.equals(((Reflect) obj).get());
     }
 
     /**
@@ -662,23 +373,7 @@ public class Reflect {
     public String toString() {
         return object.toString();
     }
-
-    // ---------------------------------------------------------------------
-    // Utility methods
-    // ---------------------------------------------------------------------
-
-    /**
-     * Wrap an object created from a constructor
-     */
-    private static Reflect on(Constructor<?> constructor, Object... args) throws ReflectException {
-        try {
-            return on(accessible(constructor).newInstance(args));
-        }
-        catch (Exception e) {
-            throw new ReflectException(e);
-        }
-    }
-
+    
     /**
      * Wrap an object returned from a method
      */
@@ -697,17 +392,6 @@ public class Reflect {
         catch (Exception e) {
             throw new ReflectException(e);
         }
-    }
-
-    /**
-     * Unwrap an object
-     */
-    private static Object unwrap(Object object) {
-        if (object instanceof Reflect) {
-            return ((Reflect) object).get();
-        }
-
-        return object;
     }
 
     /**
@@ -809,4 +493,16 @@ public class Reflect {
     }
 
     private static class NULL {}
+
+    private static class ReflectException extends RuntimeException {
+
+        /**
+         * Generated UID
+         */
+        private static final long serialVersionUID = -6213149635297151442L;
+
+        public ReflectException(Throwable cause) {
+            super(cause);
+        }
+    }
 }
