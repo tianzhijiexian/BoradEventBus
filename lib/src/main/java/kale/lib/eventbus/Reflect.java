@@ -33,7 +33,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package kale.lib.eventbus.reflect;
+package kale.lib.eventbus;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Member;
@@ -60,9 +60,7 @@ import java.util.Arrays;
  * @author Lukas Eder
  * @author Irek Matysiewicz
  */
-@Deprecated()
-@SuppressWarnings("内部使用的类，请不要从外部调用！！！")
-public class Reflect {
+class Reflect {
 
     // ---------------------------------------------------------------------
     // Static API used as entrance points to the fluent API

@@ -7,7 +7,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import kale.lib.eventbus.EventBus;
-import kale.lib.eventbus.Subscriber;
+import kale.lib.eventbus.annotation.Subscriber;
 
 /**
  * @author Jack Tony
@@ -29,6 +29,7 @@ public class SecondActivity extends Activity {
 
         EventBus.post("click", "str", 1.3f);
         EventBus.post("go", 123456);
+
     }
 
     @Subscriber(tag = "go")
@@ -43,4 +44,5 @@ public class SecondActivity extends Activity {
 
         EventBus.getInstance().unregister(this);
     }
+
 }

@@ -4,18 +4,20 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.support.annotation.CheckResult;
 import android.support.v4.content.LocalBroadcastManager;
-import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import kale.lib.eventbus.reflect.Reflect;
+import kale.lib.eventbus.utils.IntentFilterUtil;
+import rx.EventObservable;
+import rx.EventSubscriber;
 
 
 /**
@@ -26,6 +28,8 @@ public class EventBus {
 
     private String TAG = EventBus.class.getCanonicalName();
 
+    private static String mTag;
+    
     private static EventBus instance;
 
     private SparseArray<BroadcastReceiver> mSubscriberSArr;
@@ -40,7 +44,7 @@ public class EventBus {
     }
 
     public EventBus init(Context context) {
-        mLocalBroadcastManager = LocalBroadcastManager.getInstance(context);
+        mLocalBroadcastManager = LocalBroadcastManager.getInstance(context.getApplicationContext());
         return this;
     }
 
@@ -48,8 +52,28 @@ public class EventBus {
         mSubscriberSArr = new SparseArray<>();
     }
 
+    @CheckResult
+    public static EventBus setTag(String tag) {
+        mTag = tag;
+        return instance;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // post
+    ///////////////////////////////////////////////////////////////////////////
+
     public static void post(String tag) {
         post(tag, new NullParam());
+    }
+
+    public static <T> EventObservable postWithObserver(String tag, Object... params) {
+        EventObservable observable = new EventObservable();
+        EventSubscriber<T> subscriber = new EventSubscriber<T>(observable);
+
+        params = Arrays.copyOf(params, params.length + 1); // 扩容
+        params[params.length - 1] = subscriber;
+        post(tag, params);
+        return observable;
     }
 
     public static void post(String tag, Object... params) {
@@ -60,7 +84,11 @@ public class EventBus {
             throw new NullPointerException("需要先调用EventBus的init()方法");
         }
     }
-    
+
+    ///////////////////////////////////////////////////////////////////////////
+    // register & unregister
+    ///////////////////////////////////////////////////////////////////////////
+
     public void register(final Object subscriber) {
         if (subscriber == null) {
             Log.e(TAG, "Subscriber is null");
@@ -68,7 +96,7 @@ public class EventBus {
         }
         // 一个类就一个methodMap
         final Map<String, List<Method>> methodMap = new HashMap<>();
-        IntentFilter filter = initFilter(subscriber, methodMap);
+        IntentFilter filter = IntentFilterUtil.initFilter(subscriber, methodMap);
         // 如果当前类中没有注册监听，那么就不应该注册广播
         if (methodMap.size() != 0) {
             BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -96,47 +124,13 @@ public class EventBus {
         }
     }
 
-    private IntentFilter initFilter(Object subscriber, Map<String, List<Method>> methodMap) {
-        IntentFilter filter = new IntentFilter();
-        Class<?> clazz = subscriber.getClass();
-        
-        // 查找类中符合要求的注册方法,直到Object类
-        while (clazz != null && !isSystemCls(clazz.getName())) {
-            final Method[] allMethods = clazz.getDeclaredMethods();
-            initMethodsMap(allMethods, filter, methodMap);
-            clazz = clazz.getSuperclass();
-        }
-        return filter;
-    }
-
-    private void initMethodsMap(Method[] allMethods, IntentFilter filter, Map<String, List<Method>> methodMap) {
-        for (Method method : allMethods) {
-            Subscriber annotation = method.getAnnotation(Subscriber.class);
-            if (annotation != null) {
-                String key = annotation.tag();
-                // 获取方法的tag
-                if (!TextUtils.isEmpty(key)) {
-                    filter.addAction(key);
-                    if (methodMap.containsKey(key)) {
-                        methodMap.get(key).add(method);
-                    } else {
-                        ArrayList<Method> methods = new ArrayList<>();
-                        methods.add(method);
-                        methodMap.put(key, methods);
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean isSystemCls(String name) {
-        return name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("android.");
-    }
 
     static class NullParam {}
 
     static class MyMethod {
+
         public String name;
+
         public Object[] params;
 
         public MyMethod(String name, Object[] params) {

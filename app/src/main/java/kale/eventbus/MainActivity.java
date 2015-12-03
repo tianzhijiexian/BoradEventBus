@@ -10,7 +10,10 @@ import android.widget.TextView;
 import java.util.List;
 
 import kale.lib.eventbus.EventBus;
-import kale.lib.eventbus.Subscriber;
+import kale.lib.eventbus.annotation.Subscriber;
+import rx.Observable;
+import rx.Observer;
+import rx.functions.Action1;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -26,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getInstance().register(this);
 
         ((TextView) findViewById(R.id.desc_tv)).setText("第一个界面");
+        
         findViewById(R.id.start_btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -33,7 +37,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        EventBus.post("click");
+        EventBus.post("rx");
+        
+
+        EventBus.postWithObserver("rx", "123").subscribe(new Action1<String>() {
+            @Override
+            public void call(String s) {
+                Log.d(TAG, "call: 接收到回调 str = " + s);
+            }
+        });
+    }
+
+    @Subscriber(tag = "rx")
+    private void event_rx(String str, Observer<String> subscriber) {
+        // 这里产生事件
+        Log.d(TAG, "触发事件： str = " + str); // 123
+        Observable.just("from rx").subscribe(subscriber);
+    }
+
+    @Subscriber(tag = "rx")
+    private void event_rx() {
+        Log.d(TAG, "event_rx: 接收到rx");
     }
 
     @Subscriber(tag = "second")
