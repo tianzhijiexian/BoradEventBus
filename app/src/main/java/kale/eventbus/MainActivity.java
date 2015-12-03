@@ -24,11 +24,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         // 一定要先初始化
-        EventBus.getInstance().init(this);
+        EventBus.install(this);
 
-        EventBus.getInstance().register(this);
+        
+        EventBus.register(this);
+        
 
-        ((TextView) findViewById(R.id.desc_tv)).setText("第一个界面");
+                ((TextView) findViewById(R.id.desc_tv)).setText("第一个界面");
         
         findViewById(R.id.start_btn).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -36,11 +38,10 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(MainActivity.this, SecondActivity.class));
             }
         });
-
-        EventBus.post("rx");
         
 
-        EventBus.postWithObserver("rx", "123").subscribe(new Action1<String>() {
+
+        EventBus.setTag("rx").postWithObserver("123").subscribe(new Action1<String>() {
             @Override
             public void call(String s) {
                 Log.d(TAG, "call: 接收到回调 str = " + s);
@@ -84,6 +85,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        EventBus.getInstance().unregister(this);
+        EventBus.unregister(this);
     }
 }

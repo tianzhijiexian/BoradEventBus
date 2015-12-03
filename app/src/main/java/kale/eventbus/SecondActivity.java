@@ -22,13 +22,13 @@ public class SecondActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        EventBus.getInstance().register(this);
+        EventBus.register(this);
 
         ((TextView) findViewById(R.id.desc_tv)).setText("第二个界面");
         findViewById(R.id.start_btn).setVisibility(View.GONE);
 
-        EventBus.post("click", "str", 1.3f);
-        EventBus.post("go", 123456);
+        EventBus.setTag("click").post("str", 1.3f);
+        EventBus.setTag("go").post(123456);
 
     }
 
@@ -42,7 +42,7 @@ public class SecondActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
 
-        EventBus.getInstance().unregister(this);
+        EventBus.unregister(this);
     }
 
 }

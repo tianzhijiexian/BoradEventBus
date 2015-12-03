@@ -26,58 +26,58 @@ import rx.EventSubscriber;
  */
 public class EventBus {
 
-    private String TAG = EventBus.class.getCanonicalName();
+    private static String TAG = EventBus.class.getCanonicalName();
 
     private static String mTag;
     
     private static EventBus instance;
 
-    private SparseArray<BroadcastReceiver> mSubscriberSArr;
+    private static SparseArray<BroadcastReceiver> mSubscriberSArr;
 
     private static LocalBroadcastManager mLocalBroadcastManager;
 
-    public static EventBus getInstance() {
-        if (instance == null) {
-            instance = new EventBus();
-        }
-        return instance;
-    }
-
-    public EventBus init(Context context) {
+    private EventBus(Context context) {
         mLocalBroadcastManager = LocalBroadcastManager.getInstance(context.getApplicationContext());
-        return this;
-    }
-
-    private EventBus() {
         mSubscriberSArr = new SparseArray<>();
     }
 
+    /**
+     * 仅仅在第一次初始化的时候进行调用
+     * @param context
+     */
+    public static void install(Context context) {
+        if (instance == null) {
+            instance = new EventBus(context);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////////////////////////////////////////////
+    // post
+    
     @CheckResult
     public static EventBus setTag(String tag) {
         mTag = tag;
         return instance;
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // post
-    ///////////////////////////////////////////////////////////////////////////
-
-    public static void post(String tag) {
-        post(tag, new NullParam());
+    public void post() {
+        post(new NullParam());
     }
 
-    public static <T> EventObservable postWithObserver(String tag, Object... params) {
+    public <T> EventObservable postWithObserver(Object... params) {
         EventObservable observable = new EventObservable();
         EventSubscriber<T> subscriber = new EventSubscriber<T>(observable);
 
         params = Arrays.copyOf(params, params.length + 1); // 扩容
         params[params.length - 1] = subscriber;
-        post(tag, params);
+        post(params);
         return observable;
     }
 
-    public static void post(String tag, Object... params) {
-        Intent intent = ParamsHandler.initIntentByParams(tag, params);
+    public void post(Object... params) {
+        Intent intent = ParamsHandler.initIntentByParams(mTag, params);
         if (mLocalBroadcastManager != null) {
             mLocalBroadcastManager.sendBroadcast(intent);
         } else {
@@ -89,7 +89,7 @@ public class EventBus {
     // register & unregister
     ///////////////////////////////////////////////////////////////////////////
 
-    public void register(final Object subscriber) {
+    public static void register(final Object subscriber) {
         if (subscriber == null) {
             Log.e(TAG, "Subscriber is null");
             return;
@@ -116,7 +116,7 @@ public class EventBus {
         }
     }
 
-    public void unregister(Object subscriber) {
+    public static void unregister(Object subscriber) {
         BroadcastReceiver receiver = mSubscriberSArr.get(subscriber.hashCode());
         if (receiver != null) {
             mSubscriberSArr.remove(subscriber.hashCode());
