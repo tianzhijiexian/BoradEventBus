@@ -1,4 +1,4 @@
-package kale.lib.eventbus;
+package kale.lib.eventbus.utils;
 
 import android.content.Intent;
 import android.os.Parcelable;
@@ -8,12 +8,14 @@ import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import kale.lib.eventbus.EventBus;
+
 
 /**
  * @author Jack Tony
  * @date 2015/11/7
  */
-class ParamsHandler {
+public class ParamsUtil {
 
     private static final boolean DEBUG = false;
 
@@ -21,11 +23,16 @@ class ParamsHandler {
 
     private static final String PARAMS_COUNT = "params_count";
 
+    /**
+     * 通过参数来装配好一个intent对象
+     * @param tag intent的action
+     * @param params intent中要包含的数据对象
+     */
     public static Intent initIntentByParams(final String tag, final Object[] params) {
         Intent intent = new Intent();
         intent.setAction(tag);
 
-        if (params[0] instanceof EventBus.NullParam) {
+        if (params[0] instanceof NullParam) {
             if (DEBUG) Log.d(TAG, "无参数");
             intent.putExtra(PARAMS_COUNT, 0);
         } else {
@@ -60,7 +67,10 @@ class ParamsHandler {
         return intent;
     }
 
-    public static EventBus.MyMethod getParamsFromIntent(List<Method> methods, Intent intent) {
+    /**
+     * 通过intent得到一个method的bean对象
+     */
+    public static EventBus.MethodBean getMethodBeanFromIntent(List<Method> methods, Intent intent) {
         int paramsCount = intent.getIntExtra(PARAMS_COUNT, 0);
         for (Method method : methods) {
             if (paramsCount != method.getParameterTypes().length) {
@@ -69,13 +79,13 @@ class ParamsHandler {
             }
             if (paramsCount == 0) {
                 // 无参数，无需进行参数匹配，已经匹配成功
-                return new EventBus.MyMethod(method.getName(), new Object[0]);
+                return new EventBus.MethodBean(method.getName(), new Object[0]);
             } else {
                 // 有参数
                 Object[] params = getParams(intent, paramsCount);
                 if (isMatch(method, params)) {
                     // 传入的参数和接收的参数的类型完全一致，匹配成功
-                    return new EventBus.MyMethod(method.getName(), params);
+                    return new EventBus.MethodBean(method.getName(), params);
                 }
             }
         }
@@ -112,4 +122,6 @@ class ParamsHandler {
         return true;
     }
 
+
+    public static class NullParam {}
 }

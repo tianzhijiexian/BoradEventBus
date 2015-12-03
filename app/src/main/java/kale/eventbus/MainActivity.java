@@ -25,12 +25,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         // 一定要先初始化
         EventBus.install(this);
-
         
         EventBus.register(this);
         
-
-                ((TextView) findViewById(R.id.desc_tv)).setText("第一个界面");
+        ((TextView) findViewById(R.id.desc_tv)).setText("第一个界面");
+        
         
         findViewById(R.id.start_btn).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -38,9 +37,19 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(MainActivity.this, SecondActivity.class));
             }
         });
-        
 
+       EventBus.setTag(EventKey.RX).postWithObserver("123").subscribe(new Action1<List<String>>() {
+            @Override
+            public void call(List<String> strings) {
+                Log.d(TAG, "call: 接收到回调 str = " + strings);
+            }
+        });
+    }
 
+    /**
+     * 没用的
+     */
+   public void postEvent(String str) {
         EventBus.setTag("rx").postWithObserver("123").subscribe(new Action1<String>() {
             @Override
             public void call(String s) {
@@ -49,11 +58,15 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @Subscriber(tag = "rx")
-    private void event_rx(String str, Observer<String> subscriber) {
+
+    /**
+     * {@link MainActivity#postEvent(String)}
+     */
+    @Subscriber(tag = EventKey.RX)
+    private void event_rx(String str, Observer<List<String>> subscriber) {
         // 这里产生事件
         Log.d(TAG, "触发事件： str = " + str); // 123
-        Observable.just("from rx").subscribe(subscriber);
+        Observable.just("123", "dddd").toList().subscribe(subscriber);
     }
 
     @Subscriber(tag = "rx")

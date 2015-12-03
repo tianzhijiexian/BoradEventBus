@@ -1,6 +1,7 @@
 package kale.lib.eventbus.utils;
 
-import android.content.IntentFilter;
+import android.support.annotation.CheckResult;
+import android.support.v4.util.ArrayMap;
 import android.text.TextUtils;
 
 import java.lang.reflect.Method;
@@ -14,35 +15,35 @@ import kale.lib.eventbus.annotation.Subscriber;
  * @author Jack Tony
  * @date 2015/12/2
  */
-public class IntentFilterUtil {
+public class MethodsMapUtil {
 
-    public static IntentFilter initFilter(Object subscriber, Map<String, List<Method>> methodMap) {
-        IntentFilter filter = new IntentFilter();
+    @CheckResult
+    public static Map<String, List<Method>> initMap(Object subscriber) {
+        final Map<String, List<Method>> methodsMap = new ArrayMap<>();
         Class<?> clazz = subscriber.getClass();
-
         // 查找类中符合要求的注册方法,直到Object类
         while (clazz != null && !isSystemCls(clazz.getName())) {
             final Method[] allMethods = clazz.getDeclaredMethods();
-            initMethodsMap(allMethods, filter, methodMap);
+            buildMap(methodsMap, allMethods);
             clazz = clazz.getSuperclass();
         }
-        return filter;
+        return methodsMap;
     }
 
-    private static void initMethodsMap(Method[] allMethods, IntentFilter filter, Map<String, List<Method>> methodMap) {
+    private static void buildMap(Map<String, List<Method>> methodsMap, Method[] allMethods) {
+        Subscriber annotation;
+        String key;
         for (Method method : allMethods) {
-            Subscriber annotation = method.getAnnotation(Subscriber.class);
+            annotation = method.getAnnotation(Subscriber.class);
             if (annotation != null) {
-                String key = annotation.tag();
-                // 获取方法的tag
+                key = annotation.tag(); // 获取方法的tag
                 if (!TextUtils.isEmpty(key)) {
-                    filter.addAction(key); // action = key
-                    if (methodMap.containsKey(key)) {
-                        methodMap.get(key).add(method);
+                    if (methodsMap.containsKey(key)) {
+                        methodsMap.get(key).add(method);
                     } else {
                         ArrayList<Method> methods = new ArrayList<>();
                         methods.add(method);
-                        methodMap.put(key, methods);
+                        methodsMap.put(key, methods);
                     }
                 }
             }
