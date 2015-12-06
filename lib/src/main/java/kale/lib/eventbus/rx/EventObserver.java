@@ -9,11 +9,11 @@ import rx.Observer;
  * @author Jack Tony
  * @date 2015/12/2
  */
-public class EventSubscriber<T> implements Parcelable, Observer<T> {
+public class EventObserver<T> implements Parcelable, Observer<T> {
 
     private EventObservable mObservable;
 
-    public EventSubscriber(EventObservable observable) {
+    public EventObserver(EventObservable observable) {
         mObservable = observable;
     }
 
@@ -41,17 +41,17 @@ public class EventSubscriber<T> implements Parcelable, Observer<T> {
         dest.writeParcelable(this.mObservable, 0);
     }
 
-    protected EventSubscriber(Parcel in) {
+    protected EventObserver(Parcel in) {
         this.mObservable = in.readParcelable(EventObservable.class.getClassLoader());
     }
 
-    public static final Creator<EventSubscriber> CREATOR = new Creator<EventSubscriber>() {
-        public EventSubscriber createFromParcel(Parcel source) {
-            return new EventSubscriber(source);
+    public static final Creator<EventObserver> CREATOR = new Creator<EventObserver>() {
+        public EventObserver createFromParcel(Parcel source) {
+            return new EventObserver(source);
         }
 
-        public EventSubscriber[] newArray(int size) {
-            return new EventSubscriber[size];
+        public EventObserver[] newArray(int size) {
+            return new EventObserver[size];
         }
     };
 }

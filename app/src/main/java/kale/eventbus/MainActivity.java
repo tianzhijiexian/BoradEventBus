@@ -58,15 +58,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
     /**
      * {@link MainActivity#postEvent(String)}
      */
     @Subscriber(tag = EventKey.RX)
-    private void event_rx(String str, Observer<List<String>> subscriber) {
+    private void event_rx(String str, Observer<List<String>> observer) {
         // 这里产生事件
         Log.d(TAG, "触发事件： str = " + str); // 123
-        Observable.just("123", "dddd").toList().subscribe(subscriber);
+        Observable.just("123", "dddd").toList().subscribe(observer);
     }
 
     @Subscriber(tag = "rx")
@@ -94,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
     private void event_click(String str, float i) {
         Log.d(TAG, "=====> tag = click: " + str + " " + i);
     }
-
+    
     @Override
     protected void onDestroy() {
         super.onDestroy();

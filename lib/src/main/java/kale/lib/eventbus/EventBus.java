@@ -9,16 +9,16 @@ import android.support.annotation.NonNull;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.SparseArray;
 
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import kale.lib.eventbus.rx.EventObservable;
-import kale.lib.eventbus.rx.EventSubscriber;
-import kale.lib.eventbus.utils.MethodsMapUtil;
+import kale.lib.eventbus.rx.EventObserver;
+import kale.lib.eventbus.utils.MethodUtil;
 import kale.lib.eventbus.utils.ParamsUtil;
 import kale.lib.eventbus.utils.Reflect;
+import kale.lib.eventbus.utils.SimpleMethod;
 
 
 /**
@@ -30,12 +30,12 @@ public class EventBus {
     private static String TAG = EventBus.class.getSimpleName();
 
     private static String mTag;
-    
+
     private static EventBus instance;
 
-    private static SparseArray<BroadcastReceiver> mSubscriberSArr;
-
     private static LocalBroadcastManager mLocalBroadcastManager;
+
+    private static SparseArray<BroadcastReceiver> mSubscriberSArr;
 
     /**
      * 仅仅在第一次初始化的时候进行调用
@@ -55,9 +55,8 @@ public class EventBus {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-
-    ///////////////////////////////////////////////////////////////////////////
     // post
+    ///////////////////////////////////////////////////////////////////////////
 
     /**
      * 在调用后接着调用post方法来发送信息
@@ -75,16 +74,16 @@ public class EventBus {
     @CheckResult
     public <T> EventObservable postWithObserver(Object... params) {
         EventObservable observable = new EventObservable();
-        EventSubscriber<T> subscriber = new EventSubscriber<>(observable);
+        EventObserver<T> observer = new EventObserver<>(observable);
 
         params = Arrays.copyOf(params, params.length + 1); // 扩容
-        params[params.length - 1] = subscriber;
+        params[params.length - 1] = observer;
         post(params);
         return observable;
     }
 
     public void post(Object... params) {
-        Intent intent = ParamsUtil.initIntentByParams(mTag, params);
+        Intent intent = ParamsUtil.makeIntentByParams(mTag, params);
         if (mLocalBroadcastManager != null) {
             mLocalBroadcastManager.sendBroadcast(intent);
         } else {
@@ -98,23 +97,21 @@ public class EventBus {
 
     public static void register(@NonNull final Object subscriber) {
         // 一个类对应一个methodMap，这里存放该类标志有@subscriber的方法对象
-        final Map<String, List<Method>> methodMap = MethodsMapUtil.initMap(subscriber);
+        final Map<String, List<SimpleMethod>> methodMap = MethodUtil.getSubscribedMethods(subscriber);
         final IntentFilter filter = new IntentFilter();
-        for (Map.Entry<String, List<Method>> entry : methodMap.entrySet()) {
+        for (Map.Entry<String, List<SimpleMethod>> entry : methodMap.entrySet()) {
             filter.addAction(entry.getKey());
         }
-        
-        // 如果发现当前类中没有注册监听，那么就不应该注册广播
+
         if (methodMap.size() != 0) {
             BroadcastReceiver receiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    List<Method> methods = methodMap.get(intent.getAction());
-                    if (methods != null) {
-                        MethodBean bean = ParamsUtil.getMethodBeanFromIntent(methods, intent);
-                        if (bean != null) {
-                            Reflect.on(subscriber).call(bean.name, bean.params);
-                        }
+                    // 设计原则：一个[tag : params]只对应一个方法
+                    Object[] params = ParamsUtil.getParamsFromIntent(intent);
+                    SimpleMethod method = MethodUtil.getMatchedMethod(methodMap, intent.getAction(), params);
+                    if (method != null) {
+                        Reflect.on(subscriber).call(method.name, method.params);
                     }
                 }
             };
@@ -131,16 +128,4 @@ public class EventBus {
         }
     }
 
-
-    public static class MethodBean {
-
-        public String name;
-
-        public Object[] params;
-
-        public MethodBean(String name, Object[] params) {
-            this.name = name;
-            this.params = params;
-        }
-    }
 }
