@@ -15,10 +15,6 @@ import java.util.Map;
 
 import kale.lib.eventbus.rx.EventObservable;
 import kale.lib.eventbus.rx.EventObserver;
-import kale.lib.eventbus.utils.MethodUtil;
-import kale.lib.eventbus.utils.ParamsUtil;
-import kale.lib.eventbus.utils.Reflect;
-import kale.lib.eventbus.utils.SimpleMethod;
 
 
 /**
@@ -27,7 +23,7 @@ import kale.lib.eventbus.utils.SimpleMethod;
  */
 public class EventBus {
 
-    private static String TAG = EventBus.class.getSimpleName();
+    private static String TAG = "EventBus";
 
     private static String mTag;
 
@@ -83,7 +79,7 @@ public class EventBus {
     }
 
     public void post(Object... params) {
-        Intent intent = ParamsUtil.makeIntentByParams(mTag, params);
+        Intent intent = ParamsUtil.toIntent(mTag, params);
         if (mLocalBroadcastManager != null) {
             mLocalBroadcastManager.sendBroadcast(intent);
         } else {
@@ -97,9 +93,9 @@ public class EventBus {
 
     public static void register(@NonNull final Object subscriber) {
         // 一个类对应一个methodMap，这里存放该类标志有@subscriber的方法对象
-        final Map<String, List<SimpleMethod>> methodMap = MethodUtil.getSubscribedMethods(subscriber);
+        final Map<String, List<SubscriberMethod>> methodMap = SubscriberMethodUtil.getSubscribedMethods(subscriber);
         final IntentFilter filter = new IntentFilter();
-        for (Map.Entry<String, List<SimpleMethod>> entry : methodMap.entrySet()) {
+        for (Map.Entry<String, List<SubscriberMethod>> entry : methodMap.entrySet()) {
             filter.addAction(entry.getKey());
         }
 
@@ -108,8 +104,8 @@ public class EventBus {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     // 设计原则：一个[tag : params]只对应一个方法
-                    Object[] params = ParamsUtil.getParamsFromIntent(intent);
-                    SimpleMethod method = MethodUtil.getMatchedMethod(methodMap, intent.getAction(), params);
+                    Object[] params = ParamsUtil.fromIntent(intent);
+                    SubscriberMethod method = SubscriberMethodUtil.getMatchedMethod(methodMap, intent.getAction(), params);
                     if (method != null) {
                         Reflect.on(subscriber).call(method.name, method.params);
                     }

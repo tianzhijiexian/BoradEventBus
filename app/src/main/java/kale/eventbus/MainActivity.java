@@ -23,14 +23,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // 一定要先初始化
+        // 一定要先初始化，这个可以放在application或者第一个activity中
         EventBus.install(this);
         
         EventBus.register(this);
         
         ((TextView) findViewById(R.id.desc_tv)).setText("第一个界面");
-        
-        
+
         findViewById(R.id.start_btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -46,21 +45,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * 没用的
-     */
-   public void postEvent(String str) {
-        EventBus.setTag("rx").postWithObserver("123").subscribe(new Action1<String>() {
-            @Override
-            public void call(String s) {
-                Log.d(TAG, "call: 接收到回调 str = " + s);
-            }
-        });
-    }
-
-    /**
-     * {@link MainActivity#postEvent(String)}
-     */
     @Subscriber(tag = EventKey.RX)
     private void event_rx(String str, Observer<List<String>> observer) {
         // 这里产生事件
@@ -82,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
     private void event_click(CharSequence str) {
         Log.d(TAG, "=====> tag = click: " + str);
     }
-
 
     @Subscriber(tag = "click")
     private void event_one() {

@@ -14,10 +14,10 @@ import rx.functions.Action1;
  */
 public class EventObservable implements Parcelable {
 
-    protected ParcelableObserver subscriber;
+    private ParcelableObserver mObserver;
 
     public <T> void subscribe(@NonNull final Observer<T> observer) {
-        this.subscriber = new ParcelableObserver<T>(){
+        this.mObserver = new ParcelableObserver<T>(){
             @Override
             protected void onCompleted() {
                 observer.onCompleted();
@@ -44,7 +44,7 @@ public class EventObservable implements Parcelable {
     }
 
     public final <T> void subscribe(final Action1<T> onNext, final Action1<Throwable> onError, final Action0 onComplete) {
-        subscriber = new ParcelableObserver<T>() {
+        mObserver = new ParcelableObserver<T>() {
             @Override
             public void onCompleted() {
                 if (onComplete != null) {
@@ -68,7 +68,6 @@ public class EventObservable implements Parcelable {
         };
     }
 
-
     @Override
     public int describeContents() {
         return 0;
@@ -76,14 +75,14 @@ public class EventObservable implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeParcelable(this.subscriber, 0);
+        dest.writeParcelable(this.mObserver, 0);
     }
 
     public EventObservable() {
     }
 
     protected EventObservable(Parcel in) {
-        this.subscriber = in.readParcelable(ParcelableObserver.class.getClassLoader());
+        this.mObserver = in.readParcelable(ParcelableObserver.class.getClassLoader());
     }
 
     public static final Creator<EventObservable> CREATOR = new Creator<EventObservable>() {
@@ -95,4 +94,8 @@ public class EventObservable implements Parcelable {
             return new EventObservable[size];
         }
     };
+
+    public ParcelableObserver getObserver() {
+        return mObserver;
+    }
 }

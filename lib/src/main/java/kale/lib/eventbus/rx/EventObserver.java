@@ -19,16 +19,16 @@ public class EventObserver<T> implements Parcelable, Observer<T> {
 
     @Override
     public void onCompleted() {
-        mObservable.subscriber.onCompleted();
+        mObservable.getObserver().onCompleted();
     }
 
     @Override
     public void onError(Throwable e) {
-        mObservable.subscriber.onError(e);
+        mObservable.getObserver().onError(e);
     }
 
     public void onNext(T t) {
-        mObservable.subscriber.onNext(t);
+        mObservable.getObserver().onNext(t);
     }
 
     @Override

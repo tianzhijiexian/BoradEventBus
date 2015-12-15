@@ -1,4 +1,4 @@
-package kale.lib.eventbus.utils;
+package kale.lib.eventbus;
 
 import android.support.annotation.CheckResult;
 import android.support.annotation.Nullable;
@@ -17,26 +17,25 @@ import kale.lib.eventbus.annotation.Subscriber;
  * @author Jack Tony
  * @date 2015/12/2
  */
-public class MethodUtil {
+class SubscriberMethodUtil {
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
 
-    private static final String TAG = MethodUtil.class.getSimpleName();
+    private static final String TAG = SubscriberMethodUtil.class.getSimpleName();
 
     @CheckResult
-    public static Map<String, List<SimpleMethod>> getSubscribedMethods(Object subscriber) {
-        final Map<String, List<SimpleMethod>> methodsMap = new ArrayMap<>();
+    public static Map<String, List<SubscriberMethod>> getSubscribedMethods(Object subscriber) {
+        final Map<String, List<SubscriberMethod>> methodsMap = new ArrayMap<>();
         Class<?> clazz = subscriber.getClass();
-        // 查找类中符合要求的注册方法,直到Object类
         while (clazz != null && !isSystemCls(clazz.getName())) {
             final Method[] allMethods = clazz.getDeclaredMethods();
             buildMap(methodsMap, allMethods);
-            clazz = clazz.getSuperclass();
+            clazz = clazz.getSuperclass(); // 跳转到父类中继续，直到没有注册的方法
         }
         return methodsMap;
     }
 
-    private static void buildMap(Map<String, List<SimpleMethod>> methodsMap, Method[] allMethods) {
+    private static void buildMap(Map<String, List<SubscriberMethod>> methodsMap, Method[] allMethods) {
         Subscriber annotation;
         String key;
         for (Method method : allMethods) {
@@ -44,13 +43,15 @@ public class MethodUtil {
             if (annotation != null) {
                 key = annotation.tag(); // 获取方法的tag
                 if (!TextUtils.isEmpty(key)) {
-                    SimpleMethod simpleMethod = new SimpleMethod(method.getName(), method.getParameterTypes());
+                    SubscriberMethod subscriberMethod = new SubscriberMethod(
+                            method.getName(),
+                            method.getParameterTypes());
                     
                     if (methodsMap.containsKey(key)) {
-                        methodsMap.get(key).add(simpleMethod);
+                        methodsMap.get(key).add(subscriberMethod);
                     } else {
-                        ArrayList<SimpleMethod> methods = new ArrayList<>();
-                        methods.add(simpleMethod);
+                        ArrayList<SubscriberMethod> methods = new ArrayList<>();
+                        methods.add(subscriberMethod);
                         methodsMap.put(key, methods);
                     }
                 }
@@ -62,18 +63,19 @@ public class MethodUtil {
         return name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("android.");
     }
 
-
     /**
-     * 通过intent得到一个method的bean对象
+     * 通过intent得到一个{@link SubscriberMethod}
      */
     @Nullable
     @CheckResult
-    public static SimpleMethod getMatchedMethod(Map<String, List<SimpleMethod>> methodMap, String key, Object[] params) {
-        List<SimpleMethod> methods = methodMap.get(key); // 找到所有标记tag的method
+    public static SubscriberMethod getMatchedMethod(Map<String, List<SubscriberMethod>> methodMap, String key, Object[] params) {
+        List<SubscriberMethod> methods = methodMap.get(key); // 找到所有标记tag的method
         if (methods != null) {
-            for (SimpleMethod method : methods) {
+            for (SubscriberMethod method : methods) {
+                // 只有参数类型和参数个数都匹配才算是匹配成功
                 if (isMatch(method, params)) {
-                    return method.setParams(params);
+                    method.params = params;
+                    return method;
                 }
             }
         }
@@ -86,9 +88,9 @@ public class MethodUtil {
      *
      * @return 是否匹配成功
      */
-    private static boolean isMatch(SimpleMethod method, Object[] params) {
-        Class<?>[] targetClsSArr = method.getParameterTypes();
-        if (params.length != method.getParameterTypes().length) {
+    private static boolean isMatch(SubscriberMethod method, Object[] params) {
+        Class<?>[] targetClsSArr = method.parameterTypes;
+        if (params.length != targetClsSArr.length) {
             return false;
         }
 
@@ -103,14 +105,8 @@ public class MethodUtil {
             }
 
             if (!targetClz.isAssignableFrom(params[i].getClass())) {
-                if (DEBUG) {
-                    Log.e(TAG, "isMatch: 不匹配！！！");
-                }
+                if (DEBUG) Log.e(TAG, "isMatch: 不匹配！！！");
                 return false;
-            } else {
-                if (DEBUG) {
-                    Log.d(TAG, "isMatch: 匹配成功");
-                }
             }
         }
         return true;
