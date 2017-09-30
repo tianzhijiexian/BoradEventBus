@@ -7,6 +7,4 @@ package kale.eventbus.test;
 public interface EventTag {
 
     String CUSTOM_EVENT = "custom_event";
-
-    String FROM_THREAD = "from_thread";
 }

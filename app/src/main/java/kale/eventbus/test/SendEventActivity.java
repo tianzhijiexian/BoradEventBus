@@ -14,7 +14,7 @@ import kale.eventbus.R;
  * @author Jack Tony
  * @date 2015/11/8
  */
-public class SecondActivity extends Activity {
+public class SendEventActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +32,7 @@ public class SecondActivity extends Activity {
                 BroadEventBus.setTag(EventTag.CUSTOM_EVENT).post("kale");
                 break;
             case R.id.more_param_btn:
+                // BroadEventBus.setTag(EventTag.CUSTOM_EVENT).post(123, "nihao", 12f, 1.34, true);
                 BroadEventBus.setTag(EventTag.CUSTOM_EVENT).post("kale", 31f);
                 break;
             case R.id.list_btn:
@@ -41,7 +42,7 @@ public class SecondActivity extends Activity {
                 break;
 
             case R.id.thread_btn:
-                new Thread(){
+                new Thread() {
                     @Override
                     public void run() {
                         super.run();

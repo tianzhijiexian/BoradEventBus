@@ -13,6 +13,8 @@ import kale.eventbus.BroadEventBus;
 import kale.eventbus.R;
 import kale.eventbus.annotation.EventSubscriber;
 
+import static kale.eventbus.test.EventTag.CUSTOM_EVENT;
+
 public class MainActivity extends AppCompatActivity {
 
     private String TAG = "MainActivity";
@@ -21,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
+
         // 一定要先初始化
         BroadEventBus.install(this, true);
 
@@ -30,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.start_btn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, SecondActivity.class));
+                startActivity(new Intent(MainActivity.this, SendEventActivity.class));
             }
         });
     }
@@ -41,27 +43,33 @@ public class MainActivity extends AppCompatActivity {
         BroadEventBus.unregister(this);
     }
 
-    @EventSubscriber(tag = EventTag.CUSTOM_EVENT)
+    @EventSubscriber(tag = CUSTOM_EVENT)
+    private void function(int i, String s, float f, double d, boolean b) {
+        Log.d(TAG, "function() called with: i = [" + i + "], s = [" + s + "], f = [" + f + "], d = [" + d + "], b = [" + b + "]");
+        Toast.makeText(MainActivity.this, "ddd", Toast.LENGTH_SHORT).show();
+    }
+
+    @EventSubscriber(tag = CUSTOM_EVENT)
     private void function() {
         showToast("No param");
     }
 
-    @EventSubscriber(tag = EventTag.CUSTOM_EVENT)
+    @EventSubscriber(tag = CUSTOM_EVENT)
     private void function(CharSequence str) {
         Log.d(TAG, "function: " + Thread.currentThread().getName());
         showToast("CharSequence: " + str);
     }
 
-    @EventSubscriber(tag = EventTag.CUSTOM_EVENT)
+    @EventSubscriber(tag = CUSTOM_EVENT)
     private void function(String str, float f) {
         showToast("String: " + str + " float: " + f);
     }
 
-    @EventSubscriber(tag = EventTag.CUSTOM_EVENT)
+    @EventSubscriber(tag = CUSTOM_EVENT)
     private void function(List<String> strings) {
         showToast("List.get(0): " + strings.get(0));
     }
-    
+
     private void showToast(String msg) {
         Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
     }
